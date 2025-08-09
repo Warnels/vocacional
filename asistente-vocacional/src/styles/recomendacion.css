@@ -1,0 +1,25 @@
+.recomendacion-container {
+  max-width: 800px;
+  margin: auto;
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+  font-family: "Poppins", sans-serif;
+}
+
+.card {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  margin-top: 15px;
+}
+
+.info {
+  flex: 2;
+}
+
+.imagen img {
+  max-width: 150px;
+  border-radius: 10px;
+}
