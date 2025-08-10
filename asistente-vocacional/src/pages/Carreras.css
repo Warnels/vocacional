@@ -1,205 +1,246 @@
-/* Reset básico */
-* {
+/* Reset y tipografía */
+body, input, button {
+  font-family: "Poppins", sans-serif;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html, body, #root {
-  height: 100%;
-  font-family: 'Poppins', sans-serif;
-  background-color: #f5f7fa;   /* Gris muy claro, fondo limpio */
-  color: #1a1f36;              /* Azul muy oscuro para texto */
-}
-
-/* Contenedor principal - full screen flex column */
-.app-container {
-  height: 100vh;
+.carreras-app {
+  max-width: 100%;        /* Ocupa todo el ancho */
+  margin: 0;              /* Sin márgenes automáticos */
+  padding: 0 1rem;        /* Espacio lateral */
   display: flex;
   flex-direction: column;
+  height: 100vh;          /* Toda la altura de la ventana */
+  color: #222;
 }
 
-/* Header fijo arriba */
-.header {
-  display: flex;
-  align-items: center;
-  padding: 20px 40px;
-  background-color: #283e6a;  /* Azul profesional medio */
-  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-  color: #f0f4ff;             /* Blanco azulado suave */
-  gap: 20px;
+.carreras-header {
+  text-align: center;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;           /* Menos padding vertical */
   flex-shrink: 0;
-  border-bottom: 1px solid #3f51b5; /* Azul brillante */
-}
-.logo {
-  width: 60px;
-  height: 60px;
-  object-fit: contain;
-}
-.header-title {
-  font-weight: 700;
-  font-size: 2rem;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: #f0f4ff;             /* Blanco azulado suave */
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.05);
 }
 
-/* Contenido principal ocupa todo el espacio disponible */
-.main-content {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 30px 60px;
+.carreras-header__logo {
+  width: 50px;                /* Logo más pequeño */
+  height: auto;
+  margin-bottom: 0.5rem;      /* Menos espacio debajo */
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
+  transition: transform 0.3s ease;
+}
+
+.carreras-header__title {
+  font-weight: 700;
+  font-size: 1.3rem;          /* Título más pequeño */
+  color: #2c3e50;
+  letter-spacing: 1px;
+  margin: 0;                  /* Para quitar margen extra */
+}
+
+
+/* Search */
+.carreras-search {
+  margin-bottom: 2rem;
   display: flex;
   flex-direction: column;
-  gap: 30px;
-  background-color: #ffffff;  /* Fondo blanco puro */
+  align-items: center;
 }
 
-/* Buscador */
-.search-section {
-  display: flex;
-  justify-content: center;
+.carreras-search__label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #34495e;
+  font-size: 1rem;
+  user-select: none;
 }
-.search-input {
+
+.carreras-search__input-wrapper {
   width: 100%;
-  max-width: 500px;
-  padding: 14px 20px;
-  font-size: 1.1rem;
+  max-width: 400px;
+  position: relative;
+}
+
+.carreras-search__input {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  padding-left: 2.5rem; /* para ícono */
+  border: 2px solid #2980b9;
   border-radius: 30px;
-  border: 2px solid #9db4f5;  /* Azul claro */
-  outline: none;
-  transition: 0.3s ease;
-  box-shadow: none;
-  background-color: #f5f7fa;   /* Gris muy claro */
-  color: #283e6a;              /* Azul medio */
-}
-.search-input::placeholder {
-  color: #b0b8db;             /* Gris azulado suave */
-}
-.search-input:focus {
-  border-color: #3f51b5;       /* Azul brillante */
-  box-shadow: 0 0 8px rgba(63,81,181,0.5);
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+  outline-offset: 2px;
 }
 
-/* Grid de tarjetas */
-.cards-section {
+.carreras-search__input::placeholder {
+  color: #7f8c8d;
+  font-style: italic;
+}
+
+/* Opcional: ícono de lupa con pseudo-elemento */
+.carreras-search__input-wrapper::before {
+  content: "🔍";
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 1.2rem;
+}
+
+/* Al enfocar */
+.carreras-search__input:focus {
+  border-color: #1abc9c;
+  box-shadow: 0 0 5px #1abc9caa;
+}
+
+/* Lista de cards */
+.carreras-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 30px;
-  padding-bottom: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.8rem;
+  padding-bottom: 3rem;
+  width: 100%;           /* Ocupa todo el ancho disponible */
 }
 
-/* Tarjetas */
-.card {
-  background-color: #ffffff;   /* blanco puro */
-  border-radius: 15px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-  overflow: hidden;
+.carreras-no-results {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #c0392b;
+  text-align: center;
+}
+
+/* Card carrera */
+.carrera-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.1);
   display: flex;
   flex-direction: column;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border: 1px solid #e7eaf3;  /* gris muy claro */
-}
-.card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 35px rgba(0,0,0,0.15);
-}
-.card-image {
-  width: 100%;
-  height: 250px;
-  object-fit: cover;
-  filter: brightness(1);
-  transition: filter 0.3s ease;
-}
-.card:hover .card-image {
-  filter: brightness(1.05);
+  cursor: default;
 }
 
-/* Contenido de tarjeta */
-.card-content {
-  padding: 20px 25px;
+.carrera-card:focus,
+.carrera-card:hover {
+  outline: none;
+  transform: translateY(-5px);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.15);
+}
+
+.carrera-card__image {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  width: 100%;
+  object-fit: cover;
+  aspect-ratio: 16 / 9;
+}
+
+.carrera-card__content {
+  padding: 1rem 1.2rem 1.5rem;
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  color: #283e6a;             /* azul medio */
-}
-.card-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #283e6a;             /* azul medio */
-  margin-bottom: 12px;
-  line-height: 1.2;
-}
-.card-duration,
-.card-universities {
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #7a84a6;             /* gris azulado medio */
-}
-.card-description {
-  flex-grow: 1;
-  font-size: 1rem;
-  color: #495057;             /* gris oscuro */
-  margin-bottom: 15px;
-  line-height: 1.4;
 }
 
-/* Botón más información */
-.btn-info {
-  align-self: flex-start;
-  background-color: #283e6a;  /* azul medio */
-  color: #f0f4ff;             /* blanco azulado suave */
-  border: none;
-  padding: 12px 25px;
-  font-weight: 700;
-  border-radius: 30px;
-  cursor: pointer;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
-  box-shadow: 0 4px 10px rgba(40,62,106,0.7);
-}
-.btn-info:hover:not(:disabled) {
-  background-color: #3f51b5;  /* azul brillante */
-  color: #f0f4ff;
-  box-shadow: 0 6px 15px rgba(63,81,181,0.8);
-}
-.btn-info:disabled {
-  background-color: #7a84a6;  /* gris azulado */
-  cursor: not-allowed;
-  box-shadow: none;
-  color: #e9ecef;
-}
-
-/* Mensaje sin resultados */
-.no-results {
-  grid-column: 1 / -1;
-  text-align: center;
+.carrera-card__title {
+  margin: 0 0 0.5rem;
   font-size: 1.3rem;
-  color: #7a84a6;             /* gris azulado medio */
-  margin-top: 50px;
-  font-weight: 600;
+  color: #2c3e50;
+  font-weight: 700;
 }
 
-/* Footer fijo abajo */
-.footer {
-  flex-shrink: 0;
-  padding: 20px 40px;
-  background-color: #f8f9fa;  /* gris muy claro */
-  display: flex;
-  justify-content: flex-start;
-  border-top: 1px solid #e0e0e0;
+.carrera-card__duration,
+.carrera-card__description,
+.carrera-card__universities {
+  margin: 0.25rem 0;
+  color: #555;
+  flex-grow: 0;
 }
-.btn-back {
-  background-color: transparent;
-  border: 2px solid #283e6a;  /* azul medio */
-  color: #283e6a;
-  padding: 12px 28px;
-  font-weight: 700;
+
+.carrera-card__description {
+  font-size: 0.9rem;
+  line-height: 1.3;
+  margin-bottom: auto;
+}
+
+.carrera-card__universities strong,
+.carrera-card__duration strong {
+  color: #2980b9;
+}
+
+/* Botón info */
+.carrera-card__btn-info {
+  margin-top: 1.2rem;
+  align-self: flex-start;
+  background-color: #2980b9;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   border-radius: 30px;
   cursor: pointer;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.25s ease;
 }
-.btn-back:hover {
-  background-color: #283e6a;  /* azul medio */
-  color: #f0f4ff;             /* blanco azulado suave */
+
+.carrera-card__btn-info:hover:not(:disabled),
+.carrera-card__btn-info:focus:not(:disabled) {
+  background-color: #1c5980;
+  outline: none;
+  box-shadow: 0 0 8px #1c5980aa;
+}
+
+.carrera-card__btn-info:disabled {
+  background-color: #bbb;
+  cursor: not-allowed;
+}
+
+/* Footer */
+.carreras-footer {
+  text-align: center;
+  margin-top: auto;
+  padding: 1rem 0;
+  flex-shrink: 0;
+  background-color: #fff;
+  box-shadow: 0 -2px 8px rgb(0 0 0 / 0.05);
+}
+
+.carreras-footer__btn-back {
+  background-color: transparent;
+  border: 2px solid #2980b9;
+  color: #2980b9;
+  padding: 0.5rem 1.5rem;
+  border-radius: 30px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.carreras-footer__btn-back:hover,
+.carreras-footer__btn-back:focus {
+  background-color: #2980b9;
+  color: white;
+  outline: none;
+}
+
+/* Base HTML y Body */
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+  background-color: #f9fafb;
+  color: #222;
+}
+
+/* Contenedor principal para toda la app, ya definido arriba para full ancho */
+
+.carreras-main {
+  flex-grow: 1;          /* toma el espacio restante */
+  overflow-y: auto;      /* scroll vertical aquí */
+  padding: 1rem 0;
 }

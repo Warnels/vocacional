@@ -1,82 +1,118 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { GoogleMap, Marker, InfoWindow, useLoadScript } from "@react-google-maps/api";
 import "../styles/universidades.css";
-
 import universidades from "../components/listaUniversidades";
 
-
-
-// Configurar iconos Leaflet por defecto
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
-  iconUrl: require("leaflet/dist/images/marker-icon.png"),
-  shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
-});
-
-// Componente para mover el mapa al seleccionar universidad
-const MapaMover = ({ lat, lng }) => {
-  const map = useMap();
-  useEffect(() => {
-    if (lat && lng) {
-      map.setView([lat, lng], 14);
-    }
-  }, [lat, lng, map]);
-  return null;
-};
-
-
+const mapContainerStyle = { width: "100%", height: "100%" };
+const defaultCenter = { lat: -1.5, lng: -78 };
+const defaultZoom = 6.2;
 
 const Universidades = () => {
   const navigate = useNavigate();
   const [selectedUniversidad, setSelectedUniversidad] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [userLocation, setUserLocation] = useState(null);
+  const mapRef = useRef(null);
+
+  // Cargar Google Maps con tu API Key
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: "", // AIzaSyDAJ5leFgEmPStYDXVik2fH40TjQOzLcdk
+  });
 
   const handleVolver = () => {
     navigate("/chat");
   };
 
-  // Filtrar universidades por nombre según searchTerm
+  // Pedir ubicación actual al cargar
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLocation({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
+        },
+        (err) => {
+          console.warn("No se pudo obtener ubicación:", err);
+          setUserLocation(null);
+        }
+      );
+    } else {
+      console.warn("Geolocalización no soportada");
+      setUserLocation(null);
+    }
+  }, []);
+
+  // Filtrar universidades por nombre
   const universidadesFiltradas = universidades.filter((u) =>
     u.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Guardar referencia del mapa
+  const onMapLoad = useCallback((map) => {
+    mapRef.current = map;
+  }, []);
+
+  // Centrar mapa al seleccionar universidad
+  useEffect(() => {
+    if (selectedUniversidad && mapRef.current) {
+      mapRef.current.panTo({
+        lat: selectedUniversidad.lat,
+        lng: selectedUniversidad.lng,
+      });
+      mapRef.current.setZoom(14);
+    }
+  }, [selectedUniversidad]);
+
+  if (loadError) return <div>Error al cargar el mapa</div>;
+  if (!isLoaded) return <div>Cargando mapa...</div>;
 
   return (
     <div className="universidades-layout">
       <div className="mapa-section">
         <h2 className="map-title">Universidades del Ecuador</h2>
-        <div className="map-box">
-          <MapContainer
-            center={[-1.5, -78]}
-            zoom={6.2}
-            scrollWheelZoom={true}
-            style={{ height: "100%", width: "100%" }}
+        <div className="map-box" style={{ height: "500px" }}>
+          <GoogleMap
+            mapContainerStyle={mapContainerStyle}
+            zoom={defaultZoom}
+            center={userLocation || defaultCenter}
+            onLoad={onMapLoad}
           >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+            {/* Marcador ubicación usuario */}
+            {userLocation && (
+              <Marker
+                position={userLocation}
+                icon={{
+                  url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+                }}
+                title="Tu ubicación"
+              />
+            )}
+
+            {/* Marcadores universidades */}
             {universidadesFiltradas.map((u, i) => (
               <Marker
                 key={i}
-                position={[u.lat, u.lng]}
-                eventHandlers={{
-                  click: () => {
-                    setSelectedUniversidad(u);
-                  },
-                }}
-              >
-                <Popup>{u.nombre}</Popup>
-              </Marker>
+                position={{ lat: u.lat, lng: u.lng }}
+                onClick={() => setSelectedUniversidad(u)}
+              />
             ))}
 
+            {/* InfoWindow universidad seleccionada */}
             {selectedUniversidad && (
-              <MapaMover lat={selectedUniversidad.lat} lng={selectedUniversidad.lng} />
+              <InfoWindow
+                position={{ lat: selectedUniversidad.lat, lng: selectedUniversidad.lng }}
+                onCloseClick={() => setSelectedUniversidad(null)}
+              >
+                <div>
+                  <h3>{selectedUniversidad.nombre}</h3>
+                  <p>{selectedUniversidad.ciudad}</p>
+                </div>
+              </InfoWindow>
             )}
-          </MapContainer>
+          </GoogleMap>
         </div>
       </div>
 
@@ -89,7 +125,7 @@ const Universidades = () => {
             <p><strong>Descripción:</strong> {selectedUniversidad.descripcion}</p>
             <p><strong>Año de fundación:</strong> {selectedUniversidad.fundacion || "No disponible"}</p>
             <p><strong>Estudiantes:</strong> {selectedUniversidad.estudiantes ? selectedUniversidad.estudiantes.toLocaleString() : "No disponible"}</p>
-            {selectedUniversidad.principalesCarreras && selectedUniversidad.principalesCarreras.length > 0 && (
+            {selectedUniversidad.principalesCarreras && (
               <p><strong>Principales carreras:</strong> {selectedUniversidad.principalesCarreras.join(", ")}</p>
             )}
             {selectedUniversidad.sitioWeb && (
@@ -106,31 +142,21 @@ const Universidades = () => {
             <h2>Universidades del Ecuador</h2>
             <input
               type="text"
-              placeholder=" Buscar universidad..."
+              placeholder="Buscar universidad..."
               className="buscar-input"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <p>Selecciona una universidad en el mapa para ver más detalles.</p>
+            <p>Selecciona una universidad en el mapa o la lista para ver más detalles.</p>
             <ul>
               {universidadesFiltradas.map((u, i) => (
-                <li key={i} className="universidad-item">
+                <li
+                  key={i}
+                  className="universidad-item"
+                  onClick={() => setSelectedUniversidad(u)}
+                  style={{ cursor: "pointer" }}
+                >
                   {u.nombre}
-                  {selectedUniversidad && selectedUniversidad.nombre === u.nombre && (
-                    <div className="detalle-listado">
-                      <p><strong>Ciudad:</strong> {u.ciudad}</p>
-                      <p><strong>Tipo:</strong> {u.tipo}</p>
-                      <p><strong>Descripción:</strong> {u.descripcion}</p>
-                      <p><strong>Año de fundación:</strong> {u.fundacion || "No disponible"}</p>
-                      <p><strong>Estudiantes:</strong> {u.estudiantes ? u.estudiantes.toLocaleString() : "No disponible"}</p>
-                      {u.principalesCarreras && u.principalesCarreras.length > 0 && (
-                        <p><strong>Principales carreras:</strong> {u.principalesCarreras.join(", ")}</p>
-                      )}
-                      {u.sitioWeb && (
-                        <p><strong>Sitio web:</strong> <a href={u.sitioWeb} target="_blank" rel="noopener noreferrer">{u.sitioWeb}</a></p>
-                      )}
-                    </div>
-                  )}
                 </li>
               ))}
             </ul>

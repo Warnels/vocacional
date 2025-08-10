@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { v4 as uuidv4 } from "uuid";
-import ReactMarkdown from "react-markdown";
 import "../styles/chat.css";
 import { db, auth } from "../firebase";
 import {
@@ -15,37 +14,71 @@ import {
 import personaje from "../assets/personaje.png";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-
-const socket = new WebSocket("ws://localhost:8090");
+import { marked } from "marked";
 
 const preguntas = [
-  "¿Cuál es tu área de interés principal? (Ej: Ciencias, Arte, Tecnología, Medicina, Derecho, etc.)",
-  "¿Prefieres trabajar con personas, datos o máquinas?",
-  "¿Qué actividades disfrutas más en tu tiempo libre?",
-  "¿Te gustaría trabajar en equipo o prefieres tareas individuales?",
-  "¿Qué asignaturas te gustaban más en el colegio?",
-  "¿Cuál es tu nivel de habilidades en matemáticas, escritura o creatividad?",
-  "¿Te interesa resolver problemas prácticos o analizar teorías?",
-  "¿Te gustaría trabajar en oficina, al aire libre o en un entorno dinámico?",
-  "¿Cuál es tu meta profesional a largo plazo? (Ej: tener un negocio, ser investigador, ayudar a la comunidad, etc.)",
-  "¿En qué región o ciudad de Ecuador vives o te gustaría estudiar?",
-  "¿Estarías dispuesto a mudarte de ciudad para estudiar tu carrera ideal?",
-  "¿Te interesa estudiar en una universidad pública, privada o no tienes preferencia?",
+  {
+    texto: "¿Cuál es tu área de interés principal?",
+    opciones: ["Ciencias", "Arte", "Tecnología", "Medicina", "Derecho"],
+  },
+  {
+    texto: "¿Prefieres trabajar con personas, datos o máquinas?",
+    opciones: ["Personas", "Datos", "Máquinas"],
+  },
+  {
+    texto: "¿Qué actividades disfrutas más en tu tiempo libre?",
+    opciones: ["Leer", "Deporte", "Videojuegos", "Arte", "Ciencia"],
+  },
+  {
+    texto: "¿Te gustaría trabajar en equipo o prefieres tareas individuales?",
+    opciones: ["En equipo", "Individual"],
+  },
+  {
+    texto: "¿Qué asignaturas te gustaban más en el colegio?",
+    opciones: ["Matemáticas", "Lengua", "Ciencias", "Historia", "Arte"],
+  },
+  {
+    texto: "¿Cuál es tu nivel de habilidades en matemáticas, escritura o creatividad?",
+    opciones: ["Alto", "Medio", "Bajo"],
+  },
+  {
+    texto: "¿Te interesa resolver problemas prácticos o analizar teorías?",
+    opciones: ["Problemas prácticos", "Analizar teorías"],
+  },
+  {
+    texto: "¿Te gustaría trabajar en oficina, al aire libre o en un entorno dinámico?",
+    opciones: ["Oficina", "Al aire libre", "Entorno dinámico"],
+  },
+  {
+    texto: "¿Cuál es tu meta profesional a largo plazo?",
+    opciones: ["Tener un negocio", "Ser investigador", "Ayudar a la comunidad", "Otro"],
+  },
+  {
+    texto: "¿En qué región o ciudad de Ecuador vives o te gustaría estudiar?",
+    opciones: ["Quito", "Guayaquil", "Cuenca", "Otra"],
+  },
+  {
+    texto: "¿Estarías dispuesto a mudarte de ciudad para estudiar tu carrera ideal?",
+    opciones: ["Sí", "No"],
+  },
+  {
+    texto: "¿Te interesa estudiar en una universidad pública, privada o no tienes preferencia?",
+    opciones: ["Pública", "Privada", "Sin preferencia"],
+  },
 ];
 
-// Esta función analiza si la respuesta tiene formato de recomendación para mostrarla mejor
-function parseRecomendacion(text) {
-  const carrera = text.match(/Carrera:\s*(.+)/i)?.[1];
-  const motivos = text.match(/Motivos:\s*(.+)/i)?.[1];
-  const universidad = text.match(/Universidad:\s*(.+)/i)?.[1];
-  const ciudad = text.match(/Ciudad:\s*(.+)/i)?.[1];
-  const tipo = text.match(/Tipo:\s*(.+)/i)?.[1];
-  const imagen = text.match(/Imagen:\s*(https?:\/\/[^\s]+)/i)?.[1];
+function convertirMarkdown(texto) {
+  return { __html: marked.parse(texto) };
+}
 
-  if (carrera && universidad) {
-    return { carrera, motivos, universidad, ciudad, tipo, imagen };
+function extraerPorcentajes(texto) {
+  const regex = /###\s*\d+\.\s*.*?(\d{1,3})%/g;
+  const resultados = [];
+  let match;
+  while ((match = regex.exec(texto)) !== null) {
+    resultados.push(match[1]);
   }
-  return null;
+  return resultados;
 }
 
 export default function Chat() {
@@ -58,7 +91,6 @@ export default function Chat() {
   const [historyList, setHistoryList] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef(null);
-  const messageHandlerRef = useRef(null);
   const navigate = useNavigate();
 
   async function guardarRespuesta(userId, pregunta, respuesta) {
@@ -74,8 +106,6 @@ export default function Chat() {
     }
   }
 
-
-
   async function sugerirCarrera(userId) {
     try {
       const respuestasRef = collection(db, "users", userId, "respuestasChat");
@@ -89,27 +119,9 @@ export default function Chat() {
         .join("\n\n");
 
       const prompt = `
-Eres un orientador vocacional. Basado en las siguientes respuestas de un estudiante, sugiere 1 o 2 carreras profesionales adecuadas y explica brevemente por qué.
-Además, recomienda una universidad en Ecuador que esté en la región o ciudad indicada por el estudiante, incluyendo nombre, ciudad, tipo (pública o privada) y una imagen representativa de la carrera o universidad en formato URL.
+Eres un orientador vocacional. Basado en las siguientes respuestas de un estudiante, sugiere 1 o 2 carreras profesionales adecuadas y detalla las razones, universidades y lugares para estudiar, sin usar símbolos Markdown como asteriscos o guiones, solo texto claro y bien estructurado:
 
 ${respuestas}
-
-Responde en español de forma clara y amigable, usando este formato exacto:
-
-Carrera: <nombre de la carrera>
-Motivos: <explicación corta>
-Universidad: <nombre de la universidad>
-Ciudad: <ciudad>
-Tipo: <pública o privada>
-Imagen: <url de imagen>
-
-Ejemplo:
-Carrera: Ingeniería Ambiental
-Motivos: Te interesa la naturaleza, los problemas ecológicos y disfrutas trabajar al aire libre.
-Universidad: Universidad Técnica del Norte
-Ciudad: Ibarra
-Tipo: Pública
-Imagen: https://cdn-icons-png.flaticon.com/512/2547/2547478.png
       `;
 
       agregarMensaje({
@@ -118,20 +130,24 @@ Imagen: https://cdn-icons-png.flaticon.com/512/2547/2547478.png
         id: uuidv4(),
       });
 
+      setIsLoading(true);
+
       const response = await axios.post(
-        "https://api.deepseek.com/v1/chat/completions", // ✅ URL de DeepSeek
+        "https://api.deepseek.com/v1/chat/completions",
         {
-          model: "deepseek-chat", // ✅ Modelo DeepSeek
+          model: "deepseek-chat",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
         },
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.REACT_APP_DEEPSEEK_API_KEY}`, // ✅ Usa la variable que tú tengas para DeepSeek
+            Authorization: `Bearer ${process.env.REACT_APP_DEEPSEEK_API_KEY}`,
           },
         }
       );
+
+      setIsLoading(false);
 
       const recomendacion = response.data.choices[0].message.content;
       agregarMensaje({
@@ -140,6 +156,7 @@ Imagen: https://cdn-icons-png.flaticon.com/512/2547/2547478.png
         id: uuidv4(),
       });
     } catch (err) {
+      setIsLoading(false);
       console.error("Error al obtener sugerencia:", err);
       agregarMensaje({
         content: "Hubo un error al obtener tu recomendación. Intenta más tarde.",
@@ -188,8 +205,7 @@ Imagen: https://cdn-icons-png.flaticon.com/512/2547/2547478.png
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        const nombre =
-          firebaseUser.displayName || firebaseUser.email.split("@")[0];
+        const nombre = firebaseUser.displayName || firebaseUser.email.split("@")[0];
         setUser({
           displayName: nombre,
           email: firebaseUser.email,
@@ -206,7 +222,7 @@ Imagen: https://cdn-icons-png.flaticon.com/512/2547/2547478.png
         setUser(null);
         setMessages([]);
         setPreguntaIndex(-1);
-        navigate("/login"); // Redirigir si no hay sesión
+        navigate("/login");
       }
     });
     return () => unsubscribe();
@@ -221,133 +237,34 @@ Imagen: https://cdn-icons-png.flaticon.com/512/2547/2547478.png
   useEffect(() => {
     if (preguntaIndex >= 0 && preguntaIndex < preguntas.length) {
       agregarMensaje({
-        content: preguntas[preguntaIndex],
+        content: preguntas[preguntaIndex].texto,
         role: "assistant",
         id: uuidv4(),
       });
     } else if (preguntaIndex === preguntas.length) {
       agregarMensaje({
-        content:
-          "Gracias por tus respuestas. Ahora voy a ayudarte a elegir la carrera adecuada...",
+        content: "Gracias por tus respuestas. Ahora voy a ayudarte a elegir la carrera adecuada...",
         role: "assistant",
         id: uuidv4(),
       });
-      // Aquí modificamos para que no bloquee el chat y permita seguir conversando
-      setPreguntaIndex(-2); // Modo conversación libre activo
+      setPreguntaIndex(-2);
       sugerirCarrera(user.uid);
     }
   }, [preguntaIndex]);
 
   const handleSubmit = async (text) => {
     if (isLoading) return;
-
     const textoEnviar = text || question;
-
-    // Modo preguntas iniciales
-    if (preguntaIndex >= 0 && preguntaIndex < preguntas.length) {
-      if (!textoEnviar.trim()) return;
-      agregarMensaje({ content: textoEnviar, role: "user", id: uuidv4() });
-      guardarRespuesta(user.uid, preguntas[preguntaIndex], textoEnviar);
-      setQuestion("");
-      setPreguntaIndex(preguntaIndex + 1);
-      return;
-    }
-
-    // Modo conversación libre después de la recomendación
-    if (preguntaIndex === -2) {
-      if (!textoEnviar.trim()) return;
-      agregarMensaje({ content: textoEnviar, role: "user", id: uuidv4() });
-      setQuestion("");
-      setIsLoading(true);
-
-      try {
-        // Enviar contexto de la conversación completa a la API
-        const mensajesContexto = messages
-          .filter((m) => m.role === "user" || m.role === "assistant")
-          .map((m) => ({ role: m.role, content: m.content }));
-        // Añadimos el mensaje actual del usuario
-        mensajesContexto.push({ role: "user", content: textoEnviar });
-
-        const response = await axios.post(
-          "https://api.deepseek.com/v1/chat/completions",
-          {
-            model: "deepseek-chat",
-            messages: mensajesContexto,
-            temperature: 0.7,
-          },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${process.env.REACT_APP_DEEPSEEK_API_KEY}`,
-            },
-          }
-        );
-
-        const respuestaIA = response.data.choices[0].message.content;
-        agregarMensaje({ content: respuestaIA, role: "assistant", id: uuidv4() });
-
-        guardarRespuesta(user.uid, textoEnviar, respuestaIA);
-      } catch (error) {
-        console.error("Error al obtener respuesta IA:", error);
-        agregarMensaje({
-          content: "Disculpa, hubo un error al procesar tu consulta. Intenta de nuevo.",
-          role: "assistant",
-          id: uuidv4(),
-        });
-      } finally {
-        setIsLoading(false);
-      }
-
-      return;
-    }
-
-    // En caso de que preguntaIndex sea -1 o cualquier otro valor, permitir conversación libre igual
     if (!textoEnviar.trim()) return;
+
     agregarMensaje({ content: textoEnviar, role: "user", id: uuidv4() });
     setQuestion("");
-    setIsLoading(true);
-
-    try {
-      const mensajesContexto = messages
-        .filter((m) => m.role === "user" || m.role === "assistant")
-        .map((m) => ({ role: m.role, content: m.content }));
-      mensajesContexto.push({ role: "user", content: textoEnviar });
-
-      const response = await axios.post(
-        "https://api.deepseek.com/v1/chat/completions",
-        {
-          model: "deepseek-chat",
-          messages: mensajesContexto,
-          temperature: 0.7,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.REACT_APP_DEEPSEEK_API_KEY}`,
-          },
-        }
-      );
-
-      const respuestaIA = response.data.choices[0].message.content;
-      agregarMensaje({ content: respuestaIA, role: "assistant", id: uuidv4() });
-      guardarRespuesta(user.uid, textoEnviar, respuestaIA);
-    } catch (error) {
-      console.error("Error al obtener respuesta IA:", error);
-      agregarMensaje({
-        content: "Disculpa, hubo un error al procesar tu consulta. Intenta de nuevo.",
-        role: "assistant",
-        id: uuidv4(),
-      });
-    } finally {
-      setIsLoading(false);
-    }
   };
 
-  const cleanupMessageHandler = () => {
-    if (messageHandlerRef.current && socket) {
-      socket.removeEventListener("message", messageHandlerRef.current);
-      messageHandlerRef.current = null;
-    }
+  const handleOpcion = (opcion) => {
+    agregarMensaje({ content: opcion, role: "user", id: uuidv4() });
+    guardarRespuesta(user.uid, preguntas[preguntaIndex].texto, opcion);
+    setPreguntaIndex(preguntaIndex + 1);
   };
 
   const handleLogout = async () => {
@@ -389,11 +306,7 @@ Imagen: https://cdn-icons-png.flaticon.com/512/2547/2547478.png
                     key={h.id}
                     className="history-item"
                     onClick={() => handleVerChat(h)}
-                    style={{
-                      cursor: "pointer",
-                      padding: "5px",
-                      borderBottom: "1px solid #444",
-                    }}
+                    style={{ cursor: "pointer", padding: "5px", borderBottom: "1px solid #444" }}
                   >
                     {h.fecha}
                   </div>
@@ -403,142 +316,85 @@ Imagen: https://cdn-icons-png.flaticon.com/512/2547/2547478.png
               messages.map((msg, i) => {
                 const isAssistant = msg.role === "assistant";
 
-                const formatted = parseRecomendacion(msg.content);
-
                 return (
                   <div
                     key={i}
                     className={`d-flex mb-2 ${
-                      msg.role === "user"
-                        ? "justify-content-end"
-                        : "justify-content-start"
+                      isAssistant ? "justify-content-start" : "justify-content-end"
                     }`}
                   >
-                    {isAssistant && (
-                      <img
-                        src={personaje}
-                        alt="Asistente"
-                        className="chat-avatar me-2"
+                    {isAssistant && <img src={personaje} alt="Asistente" className="chat-avatar me-2" />}
+                    {isAssistant ? (
+                      <div
+                        className="p-2 rounded assistant-message"
+                        style={{ maxWidth: "75%", whiteSpace: "pre-wrap" }}
+                        dangerouslySetInnerHTML={convertirMarkdown(msg.content)}
                       />
+                    ) : (
+                      <div
+                        className="p-2 rounded user-message"
+                        style={{ maxWidth: "75%", whiteSpace: "pre-wrap" }}
+                      >
+                        {msg.content}
+                      </div>
                     )}
-                    <div
-                      className={`p-2 rounded message-bubble ${
-                        msg.role === "user"
-                          ? "user-message"
-                          : "assistant-message"
-                      }`}
-                      style={{ maxWidth: "75%", whiteSpace: "pre-wrap" }}
-                    >
-                      {formatted ? (
-                        <div className="recomendacion-card">
-                          <h5>🎓 Carrera recomendada</h5>
-                          <p>
-                            <strong>Carrera:</strong> {formatted.carrera}
-                          </p>
-                          <p>
-                            <strong>Motivos:</strong> {formatted.motivos}
-                          </p>
-                          <hr />
-                          <p>
-                            <strong>🏫 Universidad sugerida:</strong>
-                          </p>
-                          <ul>
-                            <li>
-                              <strong>Nombre:</strong> {formatted.universidad}
-                            </li>
-                            <li>
-                              <strong>Ciudad:</strong>{" "}
-                              {formatted.ciudad || "No especificada"}
-                            </li>
-                            <li>
-                              <strong>Tipo:</strong>{" "}
-                              {formatted.tipo || "No especificado"}
-                            </li>
-                          </ul>
-                          {formatted.imagen && (
-                            <img
-                              src={formatted.imagen}
-                              alt={formatted.carrera}
-                              style={{
-                                width: "100px",
-                                marginTop: "10px",
-                                borderRadius: "8px",
-                              }}
-                            />
-                          )}
-                        </div>
-                      ) : (
-                        msg.content
-                      )}
-                    </div>
                   </div>
                 );
               })
             )}
-            {isLoading && (
-              <div className="text-muted small mt-2">Escribiendo...</div>
-            )}
+            {isLoading && <div className="text-muted small mt-2">Escribiendo...</div>}
             <div ref={messagesEndRef} />
           </div>
 
           {!showHistory && (
-            <div className="border-top p-3 d-flex gap-2 chat-input">
-              <input
-                type="text"
-                className="form-control bg-dark text-white border-secondary"
-                placeholder={
-                  preguntaIndex !== -1
-                    ? "Escribe tu respuesta..."
-                    : "Escribe tu mensaje..."
-                }
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-                disabled={preguntaIndex === -1 && isLoading}
-              />
-              <button
-                className="btn btn-primary"
-                onClick={() => handleSubmit()}
-                disabled={preguntaIndex === -1 && isLoading}
-              >
-                Enviar
-              </button>
-            </div>
+            preguntaIndex >= 0 && preguntaIndex < preguntas.length ? (
+              <div className="border-top p-3 d-flex flex-column gap-2 chat-input">
+                {preguntas[preguntaIndex].opciones.map((op, idx) => (
+                  <button
+                    key={idx}
+                    className="btn btn-outline-primary w-100"
+                    onClick={() => handleOpcion(op)}
+                  >
+                    {op}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="border-top p-3 d-flex gap-2 chat-input">
+                <input
+                  type="text"
+                  className="form-control bg-dark text-white border-secondary"
+                  placeholder="Escribe tu mensaje..."
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                  disabled={isLoading}
+                />
+                <button
+                  className="btn btn-primary"
+                  onClick={() => handleSubmit()}
+                  disabled={isLoading}
+                >
+                  Enviar
+                </button>
+              </div>
+            )
           )}
         </div>
 
         <div className="col-3 d-flex flex-column position-relative p-4 options-panel">
           <h5>Opciones</h5>
           <ul className="list-group mt-3">
-            <li
-              className="list-group-item list-group-item-dark"
-              onClick={nuevoChat}
-              style={{ cursor: "pointer" }}
-            >
+            <li className="list-group-item list-group-item-dark" onClick={nuevoChat} style={{ cursor: "pointer" }}>
               Nuevo chat
             </li>
-            <li
-              className="list-group-item list-group-item-dark"
-              onClick={verHistorial}
-              style={{ cursor: "pointer" }}
-            >
+            <li className="list-group-item list-group-item-dark" onClick={verHistorial} style={{ cursor: "pointer" }}>
               Ver historial de chats
             </li>
-            <li
-              className="list-group-item list-group-item-dark"
-              onClick={() => navigate("/carreras")}
-              style={{ cursor: "pointer" }}
-            >
+            <li className="list-group-item list-group-item-dark" onClick={() => navigate("/carreras")} style={{ cursor: "pointer" }}>
               Ver carreras
             </li>
-            <li
-              className="list-group-item list-group-item-dark"
-              onClick={() =>
-                (window.location.href =
-                  "https://chatbot-f02ad.web.app/universidades")
-              }
-              style={{ cursor: "pointer" }}
-            >
+            <li className="list-group-item list-group-item-dark" onClick={() => (window.location.href = "https://chatbot-f02ad.web.app/universidades")} style={{ cursor: "pointer" }}>
               Universidades
             </li>
           </ul>
@@ -562,10 +418,7 @@ Imagen: https://cdn-icons-png.flaticon.com/512/2547/2547478.png
                   <small>{user.email}</small>
                 </div>
               </div>
-              <button
-                className="btn btn-sm btn-outline-danger w-100"
-                onClick={handleLogout}
-              >
+              <button className="btn btn-sm btn-outline-danger w-100" onClick={handleLogout}>
                 Cerrar sesión
               </button>
             </div>
